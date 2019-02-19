@@ -1,0 +1,28 @@
+List<UpdateOneModel<Orders>> requests = new List<UpdateOneModel<Orders>>(lstOrders.Count());
+                foreach (var item in lstOrders.ToList())
+                {
+                    jjj++;
+                    try
+                    {
+                        var Response1 = await skuObj.GetRequest(_SaaS_ERPIntegration_Microservice_Url + @"api/CompassIntegration/GetOrderStatusByCronJob" + "/" + item.SalesOrder_NS_ID, Request, MicroserviceName.SaaS_Configuration_Microservice, true);
+                        IDNameElement OrderStatus = JsonConvert.DeserializeObject<IDNameElement>(Response1);
+                        if (OrderStatus != null)
+                        {
+                            if(item.Status.ToLower() != OrderStatus.Value.ToLower())
+                            {
+                                var filterselection = new FilterDefinitionBuilder<Orders>().Where(x => x.SalesOrder_NS_ID == item.SalesOrder_NS_ID);
+                                var filterUpdation = new UpdateDefinitionBuilder<Orders>().Set(x => x.Status, OrderStatus.Value);
+                                var request = new UpdateOneModel<Orders>(filterselection, filterUpdation);
+                                request.IsUpsert = true;
+                                requests.Add(request);
+                                lstSalesOrder_NS_ID.Add(item.SalesOrder_NS_ID.ToString());
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Exceptions.WriteExceptionLog(ex);
+                    }
+                }
+                if (requests.Count() > 0)
+                    _RepoOrders.AddMultipleItemsSync(requests);
